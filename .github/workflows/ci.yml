@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: ktlint
+        run: ./gradlew ktlintCheck
+
+      - name: detekt
+        run: ./gradlew detekt
+
+      - name: Build
+        run: ./gradlew build
+
+      - name: Merge debug manifest
+        run: ./gradlew :app:processDebugManifest
+
+      - name: Fail if INTERNET permission is present in the merged manifest
+        run: |
+          MANIFEST="app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml"
+          if [ ! -f "$MANIFEST" ]; then
+            MANIFEST=$(find app/build/intermediates/merged_manifests -name "AndroidManifest.xml" | head -n 1)
+          fi
+          echo "Checking $MANIFEST"
+          if grep -q "android.permission.INTERNET" "$MANIFEST"; then
+            echo "::error::android.permission.INTERNET found in the merged manifest. Kroton must never declare INTERNET."
+            exit 1
+          fi
+          echo "No INTERNET permission found — OK."
+
+      - name: Upload lint/test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            **/build/reports/**
+          retention-days: 7

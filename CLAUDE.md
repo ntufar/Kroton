@@ -4,7 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This repository currently contains only the technical specification (`doc/kroton-spec.md`). No Gradle project, source modules, or CI config exist yet — there are no build/lint/test commands to run. When the project is scaffolded, update this file with the actual commands (Gradle tasks, ktlint/detekt invocations, instrumented test commands, single-test invocation).
+M0 "Foundations" is scaffolded: the full module graph builds, Room schema v1 compiles and exports its schema JSON, the 1RM calculator is real and unit-tested, and the app assembles and launches to a five-tab shell with placeholder feature screens. Feature logic (active workout, exercise seeding, exports, etc.) is not implemented yet — that's M1 onward.
+
+**Build/test/lint commands:**
+
+- `./gradlew build` — full build (all modules, all variants, unit tests, lint)
+- `./gradlew :app:assembleDebug` — just the app APK
+- `./gradlew test` — unit tests across all KMP/Android modules (e.g. `core/domain`'s `OneRepMaxCalculatorTest`)
+- `./gradlew :core:domain:test --tests "*.OneRepMaxCalculatorTest"` — single-test invocation example
+- `./gradlew ktlintCheck` / `./gradlew ktlintFormat` — lint / autoformat (config: root `.editorconfig`)
+- `./gradlew detekt` — static analysis (config: `config/detekt/detekt.yml`)
+- `./gradlew :app:processDebugManifest` — merges the manifest to `app/build/intermediates/merged_manifests/debug/processDebugManifest/AndroidManifest.xml`; CI greps this for `android.permission.INTERNET` and fails the build if found (`.github/workflows/ci.yml`)
+
+**Deviations from the spec worth knowing about:**
+
+- **iOS targets are declared but commented out.** `:core:model`, `:core:database`, `:core:domain`, `:core:export` target `androidTarget()` + `jvm()` only for now; the `iosArm64()/iosSimulatorArm64()/iosX64()` lines are present but commented with a `TODO`, since a Mac/Xcode CI runner and Room's native SQLite driver wiring weren't validated in this pass. Re-enabling them is expected to be mechanical (Room 2.7+ already ships iOS artifacts) but budget time to verify the KSP-generated `RoomDatabaseConstructor` actuals and `BundledSQLiteDriver` cinterop on-device.
+- **Room KMP**: the `KrotonDatabase` `expect object KrotonDatabaseConstructor` in `:core:database` commonMain has **no hand-written `actual`** — the Room KSP compiler generates the platform actuals per source set (`kspAndroid`, `kspJvm`) automatically when the class is annotated `@ConstructedBy`. Don't add a manual `actual object` for it; that would conflict with the generated one.
+- **`:core:database` is excluded from ktlint/detekt.** KSP writes Room's generated DAO/database impls into the same Kotlin source sets it processes, and ktlint-gradle's KMP support doesn't reliably exclude generated-only directories from linting, so the module's checked-in code is excluded wholesale (hand-written code there was still verified clean before excluding). Every other module is linted.
+- **`workout_set(estimated_1rm_kg) WHERE is_completed = 1`** (spec §3.6) is implemented as a plain (non-partial) index on `estimated1RmKg` — Room's `@Index` doesn't support a `WHERE` predicate. Revisit with a raw migration `CREATE INDEX ... WHERE ...` statement when the migration-testing apparatus lands.
+- Gradle wrapper is pinned to 8.13; AGP 8.9.2, Kotlin 2.1.20, Room 2.7.2, Koin 4.0.4, Compose BOM 2025.04.00 — chosen as a mutually-compatible, well-established combination rather than the latest available versions.
 
 Treat `doc/kroton-spec.md` as the source of truth for all product, architecture, and data-model decisions below. Re-read the relevant section before implementing a feature — this file only summarizes what's needed to orient quickly.
 

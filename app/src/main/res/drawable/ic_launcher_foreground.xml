@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Placeholder mark; the real bull's-head silhouette (spec §1.4) is a later design pass. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/kroton_mark"
+        android:pathData="M54,26 A28,28 0 1 1 53.9,26 Z" />
+</vector>

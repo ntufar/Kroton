@@ -1,0 +1,9 @@
+naming:
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ignoreAnnotated: ['Composable']
+
+style:
+  MagicNumber:
+    active: false
