@@ -35,6 +35,8 @@ class FakeWorkoutDao : WorkoutDao {
         return id
     }
 
+    override suspend fun insertWorkouts(workouts: List<WorkoutEntity>): List<Long> = workouts.map { insert(it) }
+
     override suspend fun update(workout: WorkoutEntity) {
         workouts[workout.id] = workout
         allFlow.value = workouts.values.sortedByDescending { it.startedAt }
@@ -66,11 +68,16 @@ class FakeWorkoutDao : WorkoutDao {
         return id
     }
 
+    override suspend fun insertExercises(workoutExercises: List<WorkoutExerciseEntity>): List<Long> =
+        workoutExercises.map { insertExercise(it) }
+
     override suspend fun insertSet(workoutSet: WorkoutSetEntity): Long {
         val id = nextId()
         sets[id] = workoutSet.copy(id = id)
         return id
     }
+
+    override suspend fun insertSets(workoutSets: List<WorkoutSetEntity>): List<Long> = workoutSets.map { insertSet(it) }
 
     override suspend fun updateSet(workoutSet: WorkoutSetEntity) {
         sets[workoutSet.id] = workoutSet

@@ -9,10 +9,12 @@ import io.github.ntufar.kroton.domain.MeasurementRepository
 import io.github.ntufar.kroton.domain.MeasurementSeeder
 import io.github.ntufar.kroton.domain.ProfileRepository
 import io.github.ntufar.kroton.domain.RoutineRepository
+import io.github.ntufar.kroton.domain.StatsRepository
 import io.github.ntufar.kroton.domain.WorkoutRepository
 import io.github.ntufar.kroton.feature.history.historyFeatureModule
 import io.github.ntufar.kroton.feature.measure.measureFeatureModule
 import io.github.ntufar.kroton.feature.routines.routinesFeatureModule
+import io.github.ntufar.kroton.feature.stats.statsFeatureModule
 import io.github.ntufar.kroton.feature.workout.workoutFeatureModule
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -28,6 +30,7 @@ val databaseModule =
         single { get<KrotonDatabase>().measurementDao() }
         single { get<KrotonDatabase>().progressPhotoDao() }
         single { get<KrotonDatabase>().profileDao() }
+        single { get<KrotonDatabase>().statsDao() }
     }
 
 val domainModule =
@@ -40,6 +43,7 @@ val domainModule =
         single { HistoryRepository(get()) }
         single { ProfileRepository(get()) }
         single { MeasurementRepository(get(), get(), get()) }
+        single { StatsRepository(get(), get(), get()) }
     }
 
 val appModules =
@@ -50,4 +54,5 @@ val appModules =
         routinesFeatureModule,
         historyFeatureModule,
         measureFeatureModule,
+        statsFeatureModule,
     )

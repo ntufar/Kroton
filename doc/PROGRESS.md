@@ -207,10 +207,48 @@ compare view doesn't yet re-render the two selected images larger).
 
 ## M5 — Stats
 
-Status: ⬜ not started
+Status: ✅ done (muscle-map heatmap excluded by design this pass — see below) —
+build/lint/test-verified including the 60k-set performance gate
 
-Consistency/volume/weekly-hard-sets/strength/body charts (§5.7), muscle-map heatmap, 60k-set
-performance dataset as a gate.
+What's built (`core/database/.../StatsDao.kt`, `core/domain/.../StatsRepository.kt`,
+`feature/stats/...`):
+
+- ✅ **Charts are hand-rolled `Canvas` composables (`Charts.kt`: `LineChart`/`BarChart`/`DonutChart`),
+  not Vico.** The spec's open decision #2 says "start with Vico, keep the chart API behind your
+  own interface so swapping is contained" — given no way to verify Vico's exact current API
+  surface against documentation in this pass, and that call sites already only touch these three
+  functions, swapping the implementation later is contained to `Charts.kt` alone. Revisit before
+  M7 polish.
+- ✅ Consistency: workouts-per-ISO-week bar chart, streak (day-by-day walk handling month/year
+  boundaries, same approach as M3's `HistoryRepository`), average duration. The GitHub-style year
+  heatmap grid specifically is **not** built — `ConsistencyStats.trainedLocalDates` has the data,
+  but the visual grid is deferred alongside the real month-calendar widget noted in M3/M4.
+- ✅ Volume: total-volume line chart + muscle-share donut, both from pre-aggregated
+  `StatsDao` rows. Stacked-by-muscle-over-time data is computed (`VolumeStats.volumeByDayAndMuscle`)
+  but not yet rendered as a stacked chart — the donut and line cover the two highest-value views
+  first.
+- ✅ Weekly hard sets per muscle (§4.3): pre-aggregated exercise+day set counts fanned out to
+  muscles in Kotlin (primary full credit, secondary 0.5×) over a rowset bounded by
+  `#exercises × #days`, never per-set. Rendered as a per-week total bar chart with the 10/20
+  reference numbers stated as text; true grouped-by-muscle bars are a follow-up.
+- ✅ Strength: multi-select up to 5 exercises, each plotted as a 1RM-over-time line normalised to
+  its first value = 100 so different lifts overlay meaningfully.
+- ✅ Body: weight+7-day-EMA line, body fat line, circumference type list (reuses M4's
+  `MeasurementRepository`). Dual-axis bodyweight-vs-lift overlay isn't built.
+- ✅ Long-press → export chart data as CSV (`StatsViewModel.csvFor` + `ACTION_SEND`) wired on the
+  Volume and Body sections. Pinch/drag zoom and tap-to-inspect tooltip are not implemented on the
+  hand-rolled charts (`LineChart` exposes `onTapIndex` as a hook, unused by call sites yet).
+- ✅ **60k-set performance gate** (spec §8, explicitly required by M5's definition of done):
+  `StatsDaoPerformanceTest` (new `core/database` `jvmTest` source set, first for this module) runs
+  against a *real* Room database on the JVM `BundledSQLiteDriver` (same engine as Android, via the
+  already-existing `createRoomDatabase(path)` JVM builder) — seeds 2,000 workouts × 3 exercises ×
+  10 sets = 60,000 sets using new batch-insert DAO methods (`insertWorkouts`/`insertExercises`/
+  `insertSets`, each a single Room-batched transaction), then asserts every `StatsDao` query both
+  completes under a 2s budget and returns row counts bounded by days/exercises/muscles — not sets.
+  Full run (seed + 4 queries) takes ~0.6s.
+- **Muscle-map heatmap tile is out of scope for this pass** (per explicit instruction), blocked
+  upstream on the §7.3/§11.5 écorché art-sourcing decision — `WeeklyHardSets` already computes
+  the muscle-credited data the heatmap would consume once that asset exists.
 
 ## M6 — Data portability
 

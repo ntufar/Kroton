@@ -13,6 +13,9 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(workout: WorkoutEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertWorkouts(workouts: List<WorkoutEntity>): List<Long>
+
     @Update
     suspend fun update(workout: WorkoutEntity)
 
@@ -40,8 +43,16 @@ interface WorkoutDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExercise(workoutExercise: WorkoutExerciseEntity): Long
 
+    /** Room batches a list-parameter `@Insert` into a single transaction — used by the M5
+     * 60k-set performance-gate test to seed its synthetic dataset in bounded time. */
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertExercises(workoutExercises: List<WorkoutExerciseEntity>): List<Long>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertSet(workoutSet: WorkoutSetEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertSets(workoutSets: List<WorkoutSetEntity>): List<Long>
 
     @Update
     suspend fun updateSet(workoutSet: WorkoutSetEntity)
