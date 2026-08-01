@@ -28,6 +28,15 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout ORDER BY startedAt DESC")
     fun observeAll(): Flow<List<WorkoutEntity>>
 
+    @Query("SELECT * FROM workout WHERE isInProgress = 0 ORDER BY startedAt DESC")
+    fun observeFinished(): Flow<List<WorkoutEntity>>
+
+    @Query("SELECT DISTINCT localDate FROM workout WHERE isInProgress = 0 AND localDate BETWEEN :startLocalDate AND :endLocalDate")
+    suspend fun getTrainedLocalDates(
+        startLocalDate: Int,
+        endLocalDate: Int,
+    ): List<Int>
+
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertExercise(workoutExercise: WorkoutExerciseEntity): Long
 

@@ -3,9 +3,11 @@ package io.github.ntufar.kroton.di
 import io.github.ntufar.kroton.database.KrotonDatabase
 import io.github.ntufar.kroton.database.createRoomDatabase
 import io.github.ntufar.kroton.domain.ExerciseSeeder
+import io.github.ntufar.kroton.domain.HistoryRepository
 import io.github.ntufar.kroton.domain.InventorySeeder
 import io.github.ntufar.kroton.domain.RoutineRepository
 import io.github.ntufar.kroton.domain.WorkoutRepository
+import io.github.ntufar.kroton.feature.history.historyFeatureModule
 import io.github.ntufar.kroton.feature.routines.routinesFeatureModule
 import io.github.ntufar.kroton.feature.workout.workoutFeatureModule
 import org.koin.android.ext.koin.androidContext
@@ -27,6 +29,8 @@ val domainModule =
         single { InventorySeeder(get()) }
         single { WorkoutRepository(get(), get(), get(), get()) }
         single { RoutineRepository(get(), get(), get()) }
+        single { HistoryRepository(get()) }
     }
 
-val appModules = listOf(databaseModule, domainModule, workoutFeatureModule, routinesFeatureModule)
+val appModules =
+    listOf(databaseModule, domainModule, workoutFeatureModule, routinesFeatureModule, historyFeatureModule)

@@ -94,7 +94,9 @@ fun KrotonApp() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable<KrotonRoute.Workout> { WorkoutScreen() }
-            composable<KrotonRoute.History> { HistoryScreen() }
+            composable<KrotonRoute.History> {
+                HistoryScreen(onWorkoutDuplicated = { navController.navigate(KrotonRoute.Workout) })
+            }
             composable<KrotonRoute.Measure> { MeasureScreen() }
             composable<KrotonRoute.Stats> { StatsScreen() }
             composable<KrotonRoute.Exercises> { ExercisesScreen() }

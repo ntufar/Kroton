@@ -192,6 +192,103 @@ class WorkoutRepository(
         )
     }
 
+    /** Retroactively edits an already-completed set (spec §5.4 History edit mode): clears any
+     * personal-record ledger rows this set previously held, recomputes its 1RM, and re-checks it
+     * against the (now correctly reduced) record ledger. `personal_record` is append-only —
+     * `RecordDao.getBest` is just `MAX(value)` over surviving rows — so deleting this set's old
+     * rows before re-checking is sufficient for the ledger to self-heal: a former #2 becomes the
+     * new best automatically if this edit demoted the top row, with no separate "recompute all
+     * records for this exercise" pass needed. */
+    suspend fun editCompletedSet(
+        setId: Long,
+        weightKg: Double?,
+        reps: Int?,
+        nowMs: Long,
+        formula: OneRmFormula = OneRmFormula.EPLEY,
+    ): List<RecordType> {
+        val set = workoutDao.getSetById(setId) ?: return emptyList()
+        val workoutExercise = workoutDao.getExerciseById(set.workoutExerciseId) ?: return emptyList()
+        recordDao.deleteForSet(setId)
+        val estimated1Rm =
+            if (weightKg != null && reps != null) {
+                OneRepMaxCalculator.estimate(
+                    weightKg,
+                    reps,
+                    formula,
+                )
+            } else {
+                null
+            }
+        workoutDao.updateSet(set.copy(weightKg = weightKg, reps = reps, estimated1RmKg = estimated1Rm))
+        val earned =
+            if (set.setType != SetType.WARMUP) {
+                checkAndRecordPrs(
+                    exerciseId = workoutExercise.exerciseId,
+                    workoutId = workoutExercise.workoutId,
+                    workoutSetId = setId,
+                    weightKg = weightKg,
+                    reps = reps,
+                    estimated1RmKg = estimated1Rm,
+                    nowMs = nowMs,
+                )
+            } else {
+                emptyList()
+            }
+        recomputeTotals(workoutExercise.workoutId)
+        return earned
+    }
+
+    suspend fun deleteWorkout(workoutId: Long) {
+        workoutDao.getExercisesForWorkout(workoutId).forEach { we ->
+            workoutDao.getSetsForExercise(we.id).forEach { set ->
+                recordDao.deleteForSet(set.id)
+                workoutDao.deleteSet(set)
+            }
+            workoutDao.deleteExercise(we)
+        }
+        val workout = workoutDao.getById(workoutId) ?: return
+        workoutDao.delete(workout)
+    }
+
+    /** Copies a past workout's exercises/sets as a new, unchecked in-progress workout (History's
+     * "duplicate as new workout" overflow, spec §5.4) — same shape as starting from a routine. */
+    suspend fun duplicateAsNewWorkout(
+        workoutId: Long,
+        nowMs: Long,
+        localDate: Int,
+    ): Long? {
+        val workout = workoutDao.getById(workoutId) ?: return null
+        val newWorkoutId =
+            workoutDao.insert(
+                workout.copy(
+                    id = 0,
+                    startedAt = nowMs,
+                    endedAt = null,
+                    durationSec = 0,
+                    localDate = localDate,
+                    totalVolumeKg = 0.0,
+                    totalSets = 0,
+                    prCount = 0,
+                    isInProgress = true,
+                ),
+            )
+        workoutDao.getExercisesForWorkout(workoutId).forEach { we ->
+            val newExerciseId = workoutDao.insertExercise(we.copy(id = 0, workoutId = newWorkoutId))
+            workoutDao.getSetsForExercise(we.id).forEach { set ->
+                workoutDao.insertSet(
+                    set.copy(
+                        id = 0,
+                        workoutExerciseId = newExerciseId,
+                        isCompleted = false,
+                        completedAt = null,
+                        estimated1RmKg = null,
+                    ),
+                )
+            }
+        }
+        return newWorkoutId
+    }
+
     /** Assigns a shared superset group to the given exercises (spec §5.3); they get a coloured
      * left edge and share the rest timer in the UI. Uses the first id as the group's identity. */
     suspend fun groupAsSuperset(workoutExerciseIds: List<Long>) {

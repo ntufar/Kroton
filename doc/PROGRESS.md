@@ -136,9 +136,35 @@ What's built (`core/database/.../RoutineDao.kt`, `core/domain/.../RoutineReposit
 
 ## M3 — History
 
-Status: ⬜ not started
+Status: ✅ done — build/lint/test-verified, including a repository-level retroactive-PR test
 
-List + calendar view, workout detail with edit mode, retroactive PR/total recomputation.
+What's built (`core/database/.../WorkoutDao.kt` additions, `core/domain/.../HistoryRepository.kt`,
+`core/domain/.../WorkoutRepository.editCompletedSet/deleteWorkout/duplicateAsNewWorkout`,
+`feature/history/.../HistoryViewModel.kt` + `HistoryScreen.kt`):
+
+- ✅ Reverse-chronological list grouped by month, calendar-view toggle (trained-day list for the
+  current month — a simple textual list rather than a full month grid, since a real grid widget
+  wasn't worth building before M5's charting infra exists; upgrade candidate later), header stats
+  (workouts this week/month, current streak computed by walking `local_date` day-by-day so
+  month/year boundaries are handled correctly, total volume).
+- ✅ Workout detail: read-only rendering by default, **Edit** toggle turns each set row into
+  editable weight/reps fields.
+- ✅ **Retroactive PR re-derivation is self-healing, not a separate recompute pass**: `personal_record`
+  is append-only and `RecordDao.getBest` is `MAX(value)` over surviving rows for that
+  exercise+type, so `WorkoutRepository.editCompletedSet` just deletes the edited set's own PR
+  rows before re-running the normal PR check — if that demoted the top row, the next-best
+  surviving row (an earlier real set) becomes the answer automatically. Verified by
+  `WorkoutRepositoryRetroactiveEditTest` (`core/domain` commonTest, against hand-rolled in-memory
+  fake DAOs — no Room test harness needed since `WorkoutRepository` only depends on DAO
+  interfaces): edits a 100kg PR set down to 70kg and asserts the ledger falls back to an earlier
+  80kg set.
+- ✅ Overflow: duplicate-as-new-workout (`WorkoutRepository.duplicateAsNewWorkout` — copies
+  exercises/sets as a fresh unchecked `is_in_progress` workout, then navigates to the Workout tab
+  where the existing auto-resume logic picks it up), save-as-routine (reuses M2's
+  `RoutineRepository.saveWorkoutAsRoutine`), delete (`WorkoutRepository.deleteWorkout`, cascades
+  PR-row cleanup per set).
+- Added `kotlinx-coroutines-test` to the version catalog for this — the first `core/domain` test
+  needing `runTest`/coroutine test infra.
 
 ## M4 — Measurements
 
