@@ -2,6 +2,7 @@ package io.github.ntufar.kroton.domain
 
 import io.github.ntufar.kroton.database.ExerciseDao
 import io.github.ntufar.kroton.database.ExerciseEntity
+import io.github.ntufar.kroton.database.InventoryDao
 import io.github.ntufar.kroton.database.PersonalRecordEntity
 import io.github.ntufar.kroton.database.RecordDao
 import io.github.ntufar.kroton.database.WorkoutDao
@@ -9,6 +10,7 @@ import io.github.ntufar.kroton.database.WorkoutEntity
 import io.github.ntufar.kroton.database.WorkoutExerciseEntity
 import io.github.ntufar.kroton.database.WorkoutSetEntity
 import io.github.ntufar.kroton.model.Exercise
+import io.github.ntufar.kroton.model.MuscleGroup
 import io.github.ntufar.kroton.model.OneRmFormula
 import io.github.ntufar.kroton.model.RecordType
 import io.github.ntufar.kroton.model.SetType
@@ -27,6 +29,7 @@ class WorkoutRepository(
     private val workoutDao: WorkoutDao,
     private val exerciseDao: ExerciseDao,
     private val recordDao: RecordDao,
+    private val inventoryDao: InventoryDao,
 ) {
     suspend fun getInProgressWorkoutId(): Long? = workoutDao.getInProgress()?.id
 
@@ -185,7 +188,95 @@ class WorkoutRepository(
             totalVolumeKg = workout.totalVolumeKg,
             totalSets = workout.totalSets,
             prCount = workout.prCount,
+            muscleBreakdown = muscleBreakdown(workoutId),
         )
+    }
+
+    /** Assigns a shared superset group to the given exercises (spec §5.3); they get a coloured
+     * left edge and share the rest timer in the UI. Uses the first id as the group's identity. */
+    suspend fun groupAsSuperset(workoutExerciseIds: List<Long>) {
+        if (workoutExerciseIds.size < 2) return
+        val groupId = workoutExerciseIds.first()
+        workoutExerciseIds.forEach { id ->
+            val we = workoutDao.getExerciseById(id) ?: return@forEach
+            workoutDao.updateExercise(we.copy(supersetGroupId = groupId))
+        }
+    }
+
+    suspend fun ungroupSuperset(workoutExerciseId: Long) {
+        val we = workoutDao.getExerciseById(workoutExerciseId) ?: return
+        val groupId = we.supersetGroupId ?: return
+        val workoutId = we.workoutId
+        workoutDao.getExercisesForWorkout(workoutId)
+            .filter { it.supersetGroupId == groupId }
+            .forEach { workoutDao.updateExercise(it.copy(supersetGroupId = null)) }
+    }
+
+    suspend fun reorderExercises(
+        workoutId: Long,
+        orderedWorkoutExerciseIds: List<Long>,
+    ) {
+        orderedWorkoutExerciseIds.forEachIndexed { index, id ->
+            val we = workoutDao.getExerciseById(id) ?: return@forEachIndexed
+            if (we.workoutId == workoutId) workoutDao.updateExercise(we.copy(sortOrder = index))
+        }
+    }
+
+    suspend fun replaceExercise(
+        workoutExerciseId: Long,
+        newExerciseId: Long,
+    ) {
+        val we = workoutDao.getExerciseById(workoutExerciseId) ?: return
+        workoutDao.updateExercise(we.copy(exerciseId = newExerciseId))
+    }
+
+    suspend fun updateExerciseNotes(
+        workoutExerciseId: Long,
+        notes: String?,
+    ) {
+        val we = workoutDao.getExerciseById(workoutExerciseId) ?: return
+        workoutDao.updateExercise(we.copy(notes = notes))
+    }
+
+    suspend fun updateExerciseRestSec(
+        workoutExerciseId: Long,
+        restSec: Int?,
+    ) {
+        val we = workoutDao.getExerciseById(workoutExerciseId) ?: return
+        workoutDao.updateExercise(we.copy(restSec = restSec))
+    }
+
+    /** Reads the last-completed session for this exercise excluding the current one, for the
+     * per-exercise overflow's "view history inline" affordance. */
+    suspend fun getInlineHistory(
+        exerciseId: Long,
+        excludeWorkoutId: Long,
+    ): List<WorkoutSet> = workoutDao.getMostRecentSets(exerciseId, excludeWorkoutId).map { it.toModel() }
+
+    suspend fun getPlateOptions(): List<PlateOption> =
+        inventoryDao.getEnabledPlates().map { PlateOption(it.plateKg, it.count) }
+
+    suspend fun getDefaultBarKg(): Double = inventoryDao.getDefaultBar()?.weightKg ?: DEFAULT_BAR_KG_FALLBACK
+
+    private suspend fun muscleBreakdown(workoutId: Long): Map<MuscleGroup, Double> {
+        val breakdown = mutableMapOf<MuscleGroup, Double>()
+        workoutDao.getExercisesForWorkout(workoutId).forEach { we ->
+            val exercise = exerciseDao.getById(we.exerciseId) ?: return@forEach
+            val secondaryMuscles = exerciseDao.getSecondaryMuscles(we.exerciseId)
+            workoutDao.getSetsForExercise(we.id).forEach { set ->
+                val weightKg = set.weightKg
+                val reps = set.reps
+                if (!set.isCompleted || set.setType == SetType.WARMUP || weightKg == null || reps == null) {
+                    return@forEach
+                }
+                val volume = VolumeCalculator.setVolume(weightKg, reps)
+                breakdown[exercise.primaryMuscle] = (breakdown[exercise.primaryMuscle] ?: 0.0) + volume
+                secondaryMuscles.forEach { muscle ->
+                    breakdown[muscle] = (breakdown[muscle] ?: 0.0) + volume * SECONDARY_MUSCLE_CREDIT
+                }
+            }
+        }
+        return breakdown
     }
 
     suspend fun getSnapshot(workoutId: Long): ActiveWorkoutSnapshot? {
@@ -294,6 +385,8 @@ class WorkoutRepository(
 
     private companion object {
         const val MILLIS_PER_SECOND = 1000L
+        const val DEFAULT_BAR_KG_FALLBACK = 20.0
+        const val SECONDARY_MUSCLE_CREDIT = 0.5
     }
 }
 

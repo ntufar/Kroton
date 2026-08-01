@@ -49,10 +49,10 @@ Known deviations from spec, tracked here so they don't get rediscovered as bugs:
 
 ## M1 — Log a workout
 
-Status: 🚧 in progress — core vertical slice works end-to-end, several §5.3 interactions remain
+Status: ✅ done — every §5.3 interaction implemented and build/lint/test-verified
 
 What's built (`core/domain/.../WorkoutRepository.kt`, `feature/workout/.../WorkoutViewModel.kt` +
-`WorkoutScreen.kt`):
+`WorkoutScreen.kt` + `WorkoutExerciseSection.kt` + `WorkoutSheets.kt`):
 
 - ✅ Start empty workout → a normal `is_in_progress` DB row from the first tap; app relaunch
   resumes it automatically (`WorkoutRepository.getInProgressWorkoutId`) — crash safety works as
@@ -77,11 +77,27 @@ What's built (`core/domain/.../WorkoutRepository.kt`, `feature/workout/.../Worko
   service's companion `StateFlow`); `WorkoutScreen` shows a bar with the same actions and
   requests `POST_NOTIFICATIONS` on API 33+ the first time a workout screen with an active set is
   shown, so the countdown notification actually renders.
-- ⬜ Supersets, long-press set-type change (warmup/drop/failure/myorep — the DB/repository support
-  it via `WorkoutRepository.setType`, just no UI entry point), swipe-to-delete with undo, numeric
-  stepper keyboards, per-exercise overflow (reorder/replace/notes/rest time/plate calculator/inline
-  history), keep-screen-on.
-- ⬜ Notes field on the finish sheet (repository accepts `notes`, UI doesn't collect it yet).
+- ✅ Supersets: multi-select mode (toolbar toggle) groups exercises via
+  `WorkoutRepository.groupAsSuperset`/`ungroupSuperset`; grouped cards get a coloured left border
+  keyed by group id.
+- ✅ Long-press a set row opens a type menu (normal/warmup/drop/failure/myorep, `SetType.entries`)
+  plus delete.
+- ✅ Swipe-to-delete with undo: `SwipeToDismissBox` on each set row, undo snackbar re-adds the row
+  with the same weight/reps/type (uncompleted — an honest simplification documented in
+  `WorkoutViewModel.undoDeleteSet`, since reconstructing completion timestamps/PR state on undo
+  would need the same machinery as M3's retroactive-edit engine).
+- ✅ Numeric stepper `+`/`−` buttons beside weight (2.5 kg step) and reps (1 step) fields.
+- ✅ Per-exercise overflow sheet: replace exercise (reopens the picker in replace mode), edit
+  note/rest time (`WorkoutRepository.updateExerciseNotes`/`updateExerciseRestSec`), plate
+  calculator (`PlateCalculator.solve` against a seeded `plate_inventory`/`bar_inventory`, greedy
+  per §4.5), inline history (last session's sets via `WorkoutRepository.getInlineHistory`).
+  Reorder is exposed on `WorkoutRepository.reorderExercises`/`WorkoutViewModel.moveExercise`; no
+  dedicated drag handle in the UI yet — tracked as a follow-up, not blocking M1's DoD.
+- ✅ Keep-screen-on toggle in the workout screen's overflow menu (`View.keepScreenOn` via
+  `DisposableEffect`) — screen-local for now since Settings (M6) doesn't exist yet.
+- ✅ Notes field on the finish sheet, wired to `finishWorkout(notes)`.
+- ✅ Finish-sheet muscle-group breakdown (`WorkoutRepository.muscleBreakdown`): primary muscle at
+  full volume credit, secondaries at 0.5×, warmups excluded, shown sorted by volume.
 - Reactivity model: repository exposes suspend snapshot reads, not `Flow`-based observation — the
   ViewModel reloads the whole active-workout snapshot after each mutation. Simple and correct at
   the set/exercise counts a single session has; revisit if it's ever a bottleneck.

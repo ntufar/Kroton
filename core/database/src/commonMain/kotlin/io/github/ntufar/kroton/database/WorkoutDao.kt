@@ -43,6 +43,9 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_exercise WHERE id = :id")
     suspend fun getExerciseById(id: Long): WorkoutExerciseEntity?
 
+    @Update
+    suspend fun updateExercise(workoutExercise: WorkoutExerciseEntity)
+
     @Query("SELECT * FROM workout_set WHERE workoutExerciseId = :workoutExerciseId ORDER BY sortOrder ASC")
     suspend fun getSetsForExercise(workoutExerciseId: Long): List<WorkoutSetEntity>
 

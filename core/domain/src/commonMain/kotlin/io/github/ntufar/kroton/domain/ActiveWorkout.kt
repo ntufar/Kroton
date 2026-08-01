@@ -1,5 +1,6 @@
 package io.github.ntufar.kroton.domain
 
+import io.github.ntufar.kroton.model.MuscleGroup
 import io.github.ntufar.kroton.model.RecordType
 import io.github.ntufar.kroton.model.Workout
 import io.github.ntufar.kroton.model.WorkoutExercise
@@ -29,4 +30,5 @@ data class WorkoutSummary(
     val totalVolumeKg: Double,
     val totalSets: Int,
     val prCount: Int,
+    val muscleBreakdown: Map<MuscleGroup, Double> = emptyMap(),
 )

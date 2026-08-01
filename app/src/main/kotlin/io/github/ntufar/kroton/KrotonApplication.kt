@@ -3,6 +3,7 @@ package io.github.ntufar.kroton
 import android.app.Application
 import io.github.ntufar.kroton.di.appModules
 import io.github.ntufar.kroton.domain.ExerciseSeeder
+import io.github.ntufar.kroton.domain.InventorySeeder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,6 +14,7 @@ import org.koin.core.context.startKoin
 
 class KrotonApplication : Application() {
     private val exerciseSeeder: ExerciseSeeder by inject()
+    private val inventorySeeder: InventorySeeder by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -23,6 +25,7 @@ class KrotonApplication : Application() {
         }
         CoroutineScope(Dispatchers.IO).launch {
             exerciseSeeder.seedIfEmpty(System.currentTimeMillis())
+            inventorySeeder.seedIfEmpty()
         }
     }
 }
