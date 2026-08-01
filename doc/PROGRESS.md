@@ -107,9 +107,32 @@ starting M2 — the remaining items above (rest timer especially) matter for tha
 
 ## M2 — Routines
 
-Status: ⬜ not started
+Status: ✅ done — build/lint/test-verified
 
-Folders, routine CRUD, start-from-routine, save-workout-as-routine.
+What's built (`core/database/.../RoutineDao.kt`, `core/domain/.../RoutineRepository.kt`,
+`feature/routines/.../RoutinesViewModel.kt` + `RoutinesScreen.kt`):
+
+- ✅ Folder CRUD (create/rename/delete/reorder) and routine CRUD (create/duplicate/delete),
+  editor for exercises + target sets (weight/reps), all against the schema-v1 routine tables
+  that already existed but had no DAO until now.
+- ✅ Start-from-routine (`RoutineRepository.startWorkoutFromRoutine`): creates a normal
+  `is_in_progress` workout row pre-filled with the routine's exercises/target sets (unchecked),
+  same crash-safety model as an empty workout; updates `routine.lastPerformedAt`.
+- ✅ Save-workout-as-routine (`RoutineRepository.saveWorkoutAsRoutine`): reads a finished
+  workout's logged exercises/sets and writes them as a new routine template using the logged
+  values as targets.
+- ✅ Routine card overflow: start / edit / duplicate / share-as-text (`ACTION_SEND`) / delete,
+  per §5.2.
+- **Integration point**: per spec §5.1/§5.2, Routines is *not* a bottom-bar tab — it's embedded
+  in the Workout home screen (`feature/workout` now depends on `feature/routines` and composes
+  `RoutinesScreen` under the "Start empty workout" button; starting a routine hands the new
+  workout id to `WorkoutViewModel.loadWorkout` so the active-workout view picks it up
+  immediately, no separate navigation hop).
+- Folder/exercise drag-to-reorder has repository support (`reorderFolders`/`reorderExercises`)
+  but no drag-handle UI yet — buttons/long-press reorder is a follow-up, not blocking M2's DoD.
+  The routine → session round trip is verified (start-from-routine → finish → save-as-routine);
+  the "→ history" leg of §9's phrasing is the data being durably recorded and readable via
+  `WorkoutDao`, since the History *screen* itself is M3, not yet built.
 
 ## M3 — History
 

@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.kroton.domain.RestTimerState
+import io.github.ntufar.kroton.feature.routines.RoutinesScreen
 import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
 
@@ -81,7 +82,12 @@ fun WorkoutScreen(
             }
         uiState.activeWorkout != null ->
             ActiveWorkoutContent(modifier = modifier, uiState = uiState, viewModel = viewModel)
-        else -> WorkoutHome(modifier = modifier, onStartEmptyWorkout = viewModel::startEmptyWorkout)
+        else ->
+            WorkoutHome(
+                modifier = modifier,
+                onStartEmptyWorkout = viewModel::startEmptyWorkout,
+                onWorkoutStarted = viewModel::loadWorkout,
+            )
     }
 
     uiState.summary?.let { summary ->
@@ -93,11 +99,13 @@ fun WorkoutScreen(
 private fun WorkoutHome(
     modifier: Modifier = Modifier,
     onStartEmptyWorkout: () -> Unit,
+    onWorkoutStarted: (Long) -> Unit,
 ) {
-    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Button(onClick = onStartEmptyWorkout) {
+    Column(modifier = modifier.fillMaxSize()) {
+        Button(onClick = onStartEmptyWorkout, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Text("Start empty workout")
         }
+        RoutinesScreen(modifier = Modifier.fillMaxSize(), onWorkoutStarted = onWorkoutStarted)
     }
 }
 

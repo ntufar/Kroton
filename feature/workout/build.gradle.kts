@@ -32,6 +32,7 @@ dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.core.model)
     implementation(projects.core.domain)
+    implementation(projects.feature.routines)
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.androidx.core.ktx)

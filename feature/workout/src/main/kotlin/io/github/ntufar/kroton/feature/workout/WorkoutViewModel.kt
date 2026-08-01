@@ -88,6 +88,12 @@ class WorkoutViewModel(
         if (deltaSec == null) restTimerController.skip() else restTimerController.adjust(deltaSec)
     }
 
+    /** Loads a workout started elsewhere (e.g. §5.2 "start from routine" in feature:routines)
+     * so the active-workout view picks it up without a separate hand-off mechanism. */
+    fun loadWorkout(workoutId: Long) {
+        viewModelScope.launch { refresh(workoutId) }
+    }
+
     fun startEmptyWorkout() {
         viewModelScope.launch {
             val nowMs = System.currentTimeMillis()
