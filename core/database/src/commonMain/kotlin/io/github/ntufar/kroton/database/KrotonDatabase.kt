@@ -44,6 +44,12 @@ abstract class KrotonDatabase : RoomDatabase() {
     abstract fun inventoryDao(): InventoryDao
 
     abstract fun routineDao(): RoutineDao
+
+    abstract fun measurementDao(): MeasurementDao
+
+    abstract fun progressPhotoDao(): ProgressPhotoDao
+
+    abstract fun profileDao(): ProfileDao
 }
 
 // androidx.room's KSP compiler generates the platform-specific `actual` bodies

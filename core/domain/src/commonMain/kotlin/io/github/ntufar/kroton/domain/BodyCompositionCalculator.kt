@@ -51,4 +51,27 @@ object BodyCompositionCalculator {
         ffmi: Double,
         heightM: Double,
     ): Double = ffmi + 6.1 * (1.8 - heightM)
+
+    fun bmi(
+        weightKg: Double,
+        heightM: Double,
+    ): Double = weightKg / (heightM * heightM)
+
+    /** Spec §4.4: bodyweight trend is a 7-day EMA over raw points — the smoothed line, not the
+     * noisy daily series, is the visual default. `values` must be chronological (oldest first);
+     * returns one smoothed value per input, seeded by the first raw value. */
+    fun exponentialMovingAverage(
+        values: List<Double>,
+        periodDays: Int = DEFAULT_EMA_PERIOD_DAYS,
+    ): List<Double> {
+        if (values.isEmpty()) return emptyList()
+        val alpha = 2.0 / (periodDays + 1)
+        val result = mutableListOf(values.first())
+        for (i in 1 until values.size) {
+            result += alpha * values[i] + (1 - alpha) * result[i - 1]
+        }
+        return result
+    }
+
+    private const val DEFAULT_EMA_PERIOD_DAYS = 7
 }

@@ -168,9 +168,42 @@ What's built (`core/database/.../WorkoutDao.kt` additions, `core/domain/.../Hist
 
 ## M4 — Measurements
 
-Status: ⬜ not started
+Status: ✅ done — build/lint/test-verified
 
-Measurement types/entries, progress photos, derived metrics (Navy BF%, FFMI, BMI, 7-day EMA).
+What's built (`core/database/.../MeasurementDao.kt` + `ProgressPhotoDao.kt` + `ProfileDao.kt`,
+`core/domain/.../MeasurementRepository.kt` + `ProfileRepository.kt` + `MeasurementSeeder.kt`,
+`feature/measure/...`):
+
+- ✅ Builtin measurement types seeded from the existing `BuiltinMeasurementKeys` list (weight,
+  body fat %, all circumferences, resting HR) — weight and body fat enabled by default, the rest
+  available via **Manage**; custom types can be created too.
+- ✅ Today card (quick-add weight/body fat), enabled-type list with a hand-rolled `Canvas`
+  sparkline (no chart library dependency pulled in early — Vico per the spec is scoped to M5),
+  tap-through to full history (editable table + backdated add, both routed through the same
+  `addOrReplaceEntry` upsert since `measurement_entry`'s unique `(typeId, localDate)` index
+  makes same-day re-entry a natural replace rather than a duplicate).
+- ✅ Photos: capture via `ACTION_IMAGE_CAPTURE` + a new app `FileProvider` (`file_paths.xml`,
+  scoped to `filesDir/photos/` and `cacheDir/exports/` — the latter pre-wired for M6) — no
+  `CAMERA` permission needed, confirmed absent from the merged manifest same as `INTERNET`.
+  Timeline grid, pose filter chips, two-photo compare. Photos are never touched by Auto Backup
+  because nothing outside `BackupAgent`'s explicit include-list is (deferred fully to M6, but the
+  storage location already matches the CLAUDE.md constraint).
+- ✅ Derived card: Navy BF%, lean/fat mass, FFMI + normalised FFMI, BMI (new
+  `BodyCompositionCalculator.bmi`), 7-day bodyweight EMA (new
+  `BodyCompositionCalculator.exponentialMovingAverage`) — each derived value is computed
+  alongside, never overwriting, manual entries, and reads its inputs from the *nearest-in-time*
+  entry per type (`MeasurementDao.getNearestEntry`), same "nearest in time" convention as §4.1's
+  bodyweight lookup for `WEIGHTED_BODYWEIGHT` 1RM. Unit-tested (`BodyCompositionCalculatorTest`)
+  the same way `OneRepMaxCalculatorTest` covers §4.1.
+- **New this milestone**: a minimal single-row `user_profile` DAO/repository
+  (`ProfileDao`/`ProfileRepository`) — needed for height/sex inputs to body-composition math.
+  Full settings read/write is still M6's job; this only covers ensure-seeded + height/sex update,
+  surfaced as an inline prompt in the derived-metrics card rather than a real Settings screen.
+
+Not yet built, tracked as follow-ups rather than blockers: a real month-grid calendar widget
+(History's calendar view is still the simple list from M3), and photo compare is currently a
+label-only placeholder (thumbnails render via `BitmapFactory` in the grid, but the side-by-side
+compare view doesn't yet re-render the two selected images larger).
 
 ## M5 — Stats
 
