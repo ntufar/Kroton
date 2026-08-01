@@ -68,8 +68,15 @@ What's built (`core/domain/.../WorkoutRepository.kt`, `feature/workout/.../Worko
 - ✅ Denormalised `workout.total_volume_kg` / `total_sets` / `pr_count` recompute on every
   mutation (`recomputeTotals`), not just at finish.
 - ✅ Finish → summary sheet (duration, volume, sets, PR count).
-- ⬜ Rest timer: no foreground service yet — completing a set does not start a countdown. This
-  is the biggest remaining §5.3 gap.
+- ✅ Rest timer (`feature/workout/.../resttimer/`): completing a set starts a
+  `RestTimerService` foreground service (type `specialUse`) so it survives the screen locking;
+  countdown notification with `−15s`/`+15s`/skip actions, vibration + a short tone at zero.
+  Duration is `WorkoutExercise.restSec` if set, else `DEFAULT_REST_SEC` (90s) — there's still no
+  UI to edit `restSec` per exercise (tracked below under per-exercise overflow). State is shared
+  with the UI via `RestTimerController` (interface in `core:domain`, Android impl wraps the
+  service's companion `StateFlow`); `WorkoutScreen` shows a bar with the same actions and
+  requests `POST_NOTIFICATIONS` on API 33+ the first time a workout screen with an active set is
+  shown, so the countdown notification actually renders.
 - ⬜ Supersets, long-press set-type change (warmup/drop/failure/myorep — the DB/repository support
   it via `WorkoutRepository.setType`, just no UI entry point), swipe-to-delete with undo, numeric
   stepper keyboards, per-exercise overflow (reorder/replace/notes/rest time/plate calculator/inline
@@ -118,7 +125,7 @@ share sheet + email entry points, platform `BackupAgent`, Hevy/Strong CSV import
 
 Status: ⬜ not started
 
-Accessibility pass, `el`/`ru` localisation, F-Droid metadata, README/CONTRIBUTING polish,
+Accessibility pass, `el`/`en` localisation, F-Droid metadata, README/CONTRIBUTING polish,
 v1.0.0.
 
 ## M8 — iOS

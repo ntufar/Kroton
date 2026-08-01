@@ -34,6 +34,8 @@ dependencies {
     implementation(projects.core.domain)
 
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.koin.android)
     implementation(libs.koin.androidx.compose)

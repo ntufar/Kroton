@@ -3,6 +3,9 @@ package io.github.ntufar.kroton.feature.workout
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.ntufar.kroton.domain.ActiveWorkoutSnapshot
+import io.github.ntufar.kroton.domain.DEFAULT_REST_SEC
+import io.github.ntufar.kroton.domain.RestTimerController
+import io.github.ntufar.kroton.domain.RestTimerState
 import io.github.ntufar.kroton.domain.WorkoutRepository
 import io.github.ntufar.kroton.domain.WorkoutSummary
 import io.github.ntufar.kroton.model.Exercise
@@ -23,9 +26,13 @@ data class WorkoutUiState(
     val isExercisePickerOpen: Boolean = false,
     val lastEarnedRecordTypes: List<RecordType> = emptyList(),
     val summary: WorkoutSummary? = null,
+    val restTimer: RestTimerState? = null,
 )
 
-class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() {
+class WorkoutViewModel(
+    private val repository: WorkoutRepository,
+    private val restTimerController: RestTimerController,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(WorkoutUiState())
     val uiState: StateFlow<WorkoutUiState> = _uiState.asStateFlow()
 
@@ -39,6 +46,16 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
                 _uiState.update { it.copy(allExercises = list) }
             }
         }
+        viewModelScope.launch {
+            restTimerController.state.collect { timer ->
+                _uiState.update { it.copy(restTimer = timer) }
+            }
+        }
+    }
+
+    /** Pass a delta to nudge the running rest timer, or null to skip it entirely. */
+    fun restTimerAction(deltaSec: Int?) {
+        if (deltaSec == null) restTimerController.skip() else restTimerController.adjust(deltaSec)
     }
 
     fun startEmptyWorkout() {
@@ -88,7 +105,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
     }
 
     /** Toggles a set's completion. On completion: persists the row's current values, computes the
-     * 1RM estimate, and checks live PRs (rest-timer UI itself is still TODO, see PROGRESS.md). */
+     * 1RM estimate, checks live PRs, and starts the rest timer (per §5.3, automatic — no "save" step). */
     fun toggleSetCompletion(
         setId: Long,
         isCurrentlyCompleted: Boolean,
@@ -96,6 +113,10 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
         reps: Int?,
     ) {
         val workoutId = _uiState.value.activeWorkout?.workout?.id ?: return
+        val restSec =
+            _uiState.value.activeWorkout?.exercises
+                ?.firstOrNull { exercise -> exercise.sets.any { it.set.id == setId } }
+                ?.workoutExercise?.restSec ?: DEFAULT_REST_SEC
         viewModelScope.launch {
             if (isCurrentlyCompleted) {
                 repository.uncompleteSet(setId)
@@ -103,6 +124,7 @@ class WorkoutViewModel(private val repository: WorkoutRepository) : ViewModel() 
                 repository.updateSetValues(setId, weightKg, reps)
                 val earned = repository.completeSet(setId, System.currentTimeMillis())
                 _uiState.update { it.copy(lastEarnedRecordTypes = earned) }
+                restTimerController.start(restSec)
             }
             refresh(workoutId)
         }

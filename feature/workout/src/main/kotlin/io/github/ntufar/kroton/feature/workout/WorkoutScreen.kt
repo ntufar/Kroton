@@ -1,5 +1,10 @@
 package io.github.ntufar.kroton.feature.workout
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,12 +45,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.ntufar.kroton.domain.ActiveWorkoutExercise
 import io.github.ntufar.kroton.domain.ActiveWorkoutSet
-import io.github.ntufar.kroton.domain.ActiveWorkoutSnapshot
+import io.github.ntufar.kroton.domain.RestTimerState
 import io.github.ntufar.kroton.domain.WorkoutSummary
 import io.github.ntufar.kroton.model.Exercise
 import kotlinx.coroutines.delay
@@ -66,9 +72,7 @@ fun WorkoutScreen(
         uiState.activeWorkout != null ->
             ActiveWorkoutContent(
                 modifier = modifier,
-                snapshot = uiState.activeWorkout!!,
-                allExercises = uiState.allExercises,
-                isExercisePickerOpen = uiState.isExercisePickerOpen,
+                uiState = uiState,
                 viewModel = viewModel,
             )
         else -> WorkoutHome(modifier = modifier, onStartEmptyWorkout = viewModel::startEmptyWorkout)
@@ -95,16 +99,26 @@ private fun WorkoutHome(
 @Composable
 private fun ActiveWorkoutContent(
     modifier: Modifier = Modifier,
-    snapshot: ActiveWorkoutSnapshot,
-    allExercises: List<Exercise>,
-    isExercisePickerOpen: Boolean,
+    uiState: WorkoutUiState,
     viewModel: WorkoutViewModel,
 ) {
+    val snapshot = uiState.activeWorkout!!
     var elapsedSec by remember(snapshot.workout.id) { mutableStateOf(0) }
     LaunchedEffect(snapshot.workout.id) {
         while (true) {
             elapsedSec = ((System.currentTimeMillis() - snapshot.workout.startedAt) / MILLIS_PER_SECOND).toInt()
             delay(TICK_MS)
+        }
+    }
+
+    val context = LocalContext.current
+    val notificationPermissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -115,6 +129,13 @@ private fun ActiveWorkoutContent(
             totalSets = snapshot.workout.totalSets,
             onFinish = { viewModel.finishWorkout(notes = null) },
         )
+        uiState.restTimer?.let { timer ->
+            RestTimerBar(
+                timer = timer,
+                onAdjust = { viewModel.restTimerAction(it) },
+                onSkip = { viewModel.restTimerAction(null) },
+            )
+        }
         HorizontalDivider()
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -133,9 +154,9 @@ private fun ActiveWorkoutContent(
         }
     }
 
-    if (isExercisePickerOpen) {
+    if (uiState.isExercisePickerOpen) {
         ExercisePickerSheet(
-            exercises = allExercises,
+            exercises = uiState.allExercises,
             onPick = viewModel::addExercise,
             onDismiss = { viewModel.setExercisePickerOpen(false) },
         )
@@ -159,6 +180,26 @@ private fun ActiveWorkoutHeader(
             Text("${totalVolumeKg.toInt()} kg · $totalSets sets")
         }
         Button(onClick = onFinish) { Text("Finish") }
+    }
+}
+
+@Composable
+private fun RestTimerBar(
+    timer: RestTimerState,
+    onAdjust: (Int) -> Unit,
+    onSkip: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("Rest: ${formatElapsed(timer.remainingSec)}", fontWeight = FontWeight.Bold)
+        Row {
+            TextButton(onClick = { onAdjust(-REST_ADJUST_STEP_SEC) }) { Text("−15s") }
+            TextButton(onClick = { onAdjust(REST_ADJUST_STEP_SEC) }) { Text("+15s") }
+            TextButton(onClick = onSkip) { Text("Skip") }
+        }
     }
 }
 
@@ -328,3 +369,4 @@ private const val MILLIS_PER_SECOND = 1000L
 private const val TICK_MS = 1000L
 private const val SEC_PER_HOUR = 3600
 private const val SEC_PER_MIN = 60
+private const val REST_ADJUST_STEP_SEC = 15

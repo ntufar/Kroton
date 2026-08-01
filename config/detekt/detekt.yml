@@ -7,3 +7,14 @@ naming:
 style:
   MagicNumber:
     active: false
+
+complexity:
+  TooManyFunctions:
+    active: true
+    # Default (11) is tight for a ViewModel with one method per user action, or a Compose
+    # screen file with one small composable per UI section — both idiomatic here, not smells.
+    thresholdInFiles: 15
+    thresholdInClasses: 15
+    thresholdInInterfaces: 11
+    thresholdInObjects: 11
+    thresholdInEnums: 11
