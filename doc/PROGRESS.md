@@ -27,7 +27,10 @@ Status: 🚧 mostly done
   Settings, manifest with exactly the 5 approved permissions.
 - ✅ CI (`.github/workflows/ci.yml`) — ktlint, detekt, `./gradlew build`, merged-manifest grep
   that fails the build if `INTERNET` appears.
-- ⬜ free-exercise-db import + curation (~300 exercises).
+- 🚧 Exercise catalogue: a hand-curated 50-exercise seed list (`core/domain/.../SeededExercises.kt`)
+  covering every major muscle group ships via `ExerciseSeeder`, run once from
+  `KrotonApplication.onCreate`. The full free-exercise-db import + curation to ~250-300 rows
+  (spec §7.1) is still open — this is a functional placeholder, not the licensed import.
 - ⬜ Écorché muscle map (front/back SVGs) + the enum-to-path CI contract test (spec §7.3).
 - ⬜ Room migration test harness (schema-JSON diff test) — schema v1 export exists, but no
   migration tests yet since there's only one version.
@@ -46,12 +49,38 @@ Known deviations from spec, tracked here so they don't get rediscovered as bugs:
 
 ## M1 — Log a workout
 
-Status: ⬜ not started
+Status: 🚧 in progress — core vertical slice works end-to-end, several §5.3 interactions remain
 
-Empty workout, set table with **Previous** column, rest timer (foreground service), finish +
-summary sheet, live PR detection, crash-safe in-progress workout row. This is the critical
-screen — per spec §9, budget roughly a third of total project effort here, and use it daily
-before starting M2.
+What's built (`core/domain/.../WorkoutRepository.kt`, `feature/workout/.../WorkoutViewModel.kt` +
+`WorkoutScreen.kt`):
+
+- ✅ Start empty workout → a normal `is_in_progress` DB row from the first tap; app relaunch
+  resumes it automatically (`WorkoutRepository.getInProgressWorkoutId`) — crash safety works as
+  specified, no separate draft/staging path.
+- ✅ Add exercise (bottom-sheet picker, client-side filtered search over the seeded catalogue),
+  add/delete sets, edit weight/reps.
+- ✅ **Previous** column: looks up the most recent non-in-progress session containing the
+  exercise and fills the row on tap (`WorkoutDao.getMostRecentSets`).
+- ✅ Checking a set commits immediately, computes the estimated 1RM (`OneRepMaxCalculator`), and
+  checks it live against `personal_record` (`WorkoutRepository.checkAndRecordPrs` — MAX_WEIGHT,
+  BEST_1RM, BEST_SET_VOLUME, MAX_REPS for bodyweight sets); a PR badge shows immediately. Warmup
+  sets are excluded from both volume and PR checks per the default config.
+- ✅ Denormalised `workout.total_volume_kg` / `total_sets` / `pr_count` recompute on every
+  mutation (`recomputeTotals`), not just at finish.
+- ✅ Finish → summary sheet (duration, volume, sets, PR count).
+- ⬜ Rest timer: no foreground service yet — completing a set does not start a countdown. This
+  is the biggest remaining §5.3 gap.
+- ⬜ Supersets, long-press set-type change (warmup/drop/failure/myorep — the DB/repository support
+  it via `WorkoutRepository.setType`, just no UI entry point), swipe-to-delete with undo, numeric
+  stepper keyboards, per-exercise overflow (reorder/replace/notes/rest time/plate calculator/inline
+  history), keep-screen-on.
+- ⬜ Notes field on the finish sheet (repository accepts `notes`, UI doesn't collect it yet).
+- Reactivity model: repository exposes suspend snapshot reads, not `Flow`-based observation — the
+  ViewModel reloads the whole active-workout snapshot after each mutation. Simple and correct at
+  the set/exercise counts a single session has; revisit if it's ever a bottleneck.
+
+Per spec §9, budget roughly a third of total project effort here, and use it daily before
+starting M2 — the remaining items above (rest timer especially) matter for that daily-use bar.
 
 ## M2 — Routines
 

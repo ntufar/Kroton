@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import io.github.ntufar.kroton.model.MuscleGroup
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -27,4 +28,13 @@ interface ExerciseDao {
 
     @Query("SELECT * FROM exercise WHERE nameNormalised LIKE '%' || :query || '%' ORDER BY name ASC")
     fun search(query: String): Flow<List<ExerciseEntity>>
+
+    @Query("SELECT COUNT(*) FROM exercise")
+    suspend fun count(): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertSecondaryMuscle(entity: ExerciseSecondaryMuscleEntity)
+
+    @Query("SELECT muscle FROM exercise_secondary_muscle WHERE exerciseId = :exerciseId")
+    suspend fun getSecondaryMuscles(exerciseId: Long): List<MuscleGroup>
 }

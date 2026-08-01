@@ -40,6 +40,35 @@ interface WorkoutDao {
     @Query("SELECT * FROM workout_exercise WHERE workoutId = :workoutId ORDER BY sortOrder ASC")
     suspend fun getExercisesForWorkout(workoutId: Long): List<WorkoutExerciseEntity>
 
+    @Query("SELECT * FROM workout_exercise WHERE id = :id")
+    suspend fun getExerciseById(id: Long): WorkoutExerciseEntity?
+
     @Query("SELECT * FROM workout_set WHERE workoutExerciseId = :workoutExerciseId ORDER BY sortOrder ASC")
     suspend fun getSetsForExercise(workoutExerciseId: Long): List<WorkoutSetEntity>
+
+    @Query("SELECT * FROM workout_set WHERE id = :id")
+    suspend fun getSetById(id: Long): WorkoutSetEntity?
+
+    @Delete
+    suspend fun deleteSet(workoutSet: WorkoutSetEntity)
+
+    @Delete
+    suspend fun deleteExercise(workoutExercise: WorkoutExerciseEntity)
+
+    @Query(
+        """
+        SELECT ws.* FROM workout_set ws
+        WHERE ws.workoutExerciseId = (
+            SELECT we.id FROM workout_exercise we
+            JOIN workout w ON we.workoutId = w.id
+            WHERE we.exerciseId = :exerciseId AND w.id != :excludeWorkoutId AND w.isInProgress = 0
+            ORDER BY w.startedAt DESC LIMIT 1
+        )
+        ORDER BY ws.sortOrder ASC
+        """,
+    )
+    suspend fun getMostRecentSets(
+        exerciseId: Long,
+        excludeWorkoutId: Long,
+    ): List<WorkoutSetEntity>
 }
