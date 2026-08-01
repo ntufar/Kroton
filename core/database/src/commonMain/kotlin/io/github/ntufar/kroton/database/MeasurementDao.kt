@@ -60,4 +60,10 @@ interface MeasurementDao {
         typeId: Long,
         nearRecordedAt: Long,
     ): MeasurementEntryEntity?
+
+    @Query("SELECT * FROM measurement_entry")
+    suspend fun getAllEntries(): List<MeasurementEntryEntity>
+
+    @Query("DELETE FROM measurement_entry")
+    suspend fun clearEntries()
 }

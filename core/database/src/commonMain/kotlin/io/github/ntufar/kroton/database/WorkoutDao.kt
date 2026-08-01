@@ -78,6 +78,15 @@ interface WorkoutDao {
     @Delete
     suspend fun deleteExercise(workoutExercise: WorkoutExerciseEntity)
 
+    @Query("DELETE FROM workout_set")
+    suspend fun clearSets()
+
+    @Query("DELETE FROM workout_exercise")
+    suspend fun clearExercises()
+
+    @Query("DELETE FROM workout")
+    suspend fun clearWorkouts()
+
     @Query(
         """
         SELECT ws.* FROM workout_set ws

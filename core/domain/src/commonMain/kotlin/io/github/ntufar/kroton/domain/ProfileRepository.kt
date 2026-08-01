@@ -28,6 +28,30 @@ class ProfileRepository(private val profileDao: ProfileDao) {
         profileDao.update(existing.copy(heightCm = heightCm, sex = sex))
     }
 
+    /** Full profile replace (spec §5.8 settings). Preserves the row's id — Room upserts by
+     * primary key, so this never creates a second row. */
+    suspend fun update(profile: io.github.ntufar.kroton.model.UserProfile) {
+        val existing = profileDao.get() ?: defaultProfile()
+        profileDao.update(existing.copy(from = profile))
+    }
+
+    private fun UserProfileEntity.copy(from: io.github.ntufar.kroton.model.UserProfile) =
+        copy(
+            heightCm = from.heightCm,
+            birthDate = from.birthDate,
+            sex = from.sex,
+            weightUnit = from.weightUnit,
+            lengthUnit = from.lengthUnit,
+            distanceUnit = from.distanceUnit,
+            defaultRestSec = from.defaultRestSec,
+            firstDayOfWeek = from.firstDayOfWeek,
+            oneRmFormula = from.oneRmFormula,
+            theme = from.theme,
+            dynamicColour = from.dynamicColour,
+            countWarmupsInVolume = from.countWarmupsInVolume,
+            secondaryMuscleCredit = from.secondaryMuscleCredit,
+        )
+
     private fun defaultProfile() =
         UserProfileEntity(
             heightCm = null,

@@ -23,6 +23,12 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercise WHERE id = :id")
     suspend fun getById(id: Long): ExerciseEntity?
 
+    @Query("SELECT * FROM exercise WHERE nameNormalised = :nameNormalised LIMIT 1")
+    suspend fun getByNameNormalised(nameNormalised: String): ExerciseEntity?
+
+    @Query("SELECT * FROM exercise WHERE seedUuid = :seedUuid LIMIT 1")
+    suspend fun getBySeedUuid(seedUuid: String): ExerciseEntity?
+
     @Query("SELECT * FROM exercise WHERE isArchived = 0 ORDER BY name ASC")
     fun observeAll(): Flow<List<ExerciseEntity>>
 

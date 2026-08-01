@@ -28,4 +28,10 @@ interface RecordDao {
 
     @Query("SELECT COUNT(*) FROM personal_record WHERE workoutId = :workoutId")
     suspend fun countForWorkout(workoutId: Long): Int
+
+    @Query("SELECT * FROM personal_record")
+    suspend fun getAll(): List<PersonalRecordEntity>
+
+    @Query("DELETE FROM personal_record")
+    suspend fun clearAll()
 }

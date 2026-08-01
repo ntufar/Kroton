@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pre-API 31 Auto Backup rules (spec §6.7): never back up the raw SQLite files or photos —
+     only the gzipped JSON snapshot KrotonBackupAgent writes should leave the device. -->
+<full-backup-content>
+    <exclude domain="database" path="kroton.db" />
+    <exclude domain="database" path="kroton.db-wal" />
+    <exclude domain="database" path="kroton.db-shm" />
+    <exclude domain="file" path="photos/" />
+</full-backup-content>

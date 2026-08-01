@@ -20,4 +20,7 @@ interface ProgressPhotoDao {
 
     @Query("SELECT * FROM progress_photo ORDER BY recordedAt DESC")
     fun observeAll(): Flow<List<ProgressPhotoEntity>>
+
+    @Query("DELETE FROM progress_photo")
+    suspend fun clearAll()
 }

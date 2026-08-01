@@ -23,6 +23,10 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.model)
             implementation(libs.kotlinx.serialization.json)
+            // fastexcel is a plain JVM jar (no Android-specific requirements); used directly
+            // from commonMain since this module's only targets are androidTarget()+jvm() — see
+            // CLAUDE.md: fastexcel over Apache POI (size/method-count on Android).
+            implementation(libs.fastexcel)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

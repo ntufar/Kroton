@@ -118,6 +118,19 @@ class FakeWorkoutDao : WorkoutDao {
                 ?.first
         return mostRecentWorkoutExercise?.let { we -> getSetsForExercise(we.id) } ?: emptyList()
     }
+
+    override suspend fun clearSets() {
+        sets.clear()
+    }
+
+    override suspend fun clearExercises() {
+        exercises.clear()
+    }
+
+    override suspend fun clearWorkouts() {
+        workouts.clear()
+        allFlow.value = emptyList()
+    }
 }
 
 class FakeRecordDao : RecordDao {
@@ -144,6 +157,12 @@ class FakeRecordDao : RecordDao {
     }
 
     override suspend fun countForWorkout(workoutId: Long): Int = records.values.count { it.workoutId == workoutId }
+
+    override suspend fun getAll(): List<PersonalRecordEntity> = records.values.toList()
+
+    override suspend fun clearAll() {
+        records.clear()
+    }
 }
 
 class FakeExerciseDao : ExerciseDao {
@@ -166,6 +185,14 @@ class FakeExerciseDao : ExerciseDao {
     }
 
     override suspend fun getById(id: Long): ExerciseEntity? = exercises[id]
+
+    override suspend fun getByNameNormalised(nameNormalised: String): ExerciseEntity? =
+        exercises.values.firstOrNull { it.nameNormalised == nameNormalised }
+
+    override suspend fun getBySeedUuid(seedUuid: String): ExerciseEntity? =
+        exercises.values.firstOrNull {
+            it.seedUuid == seedUuid
+        }
 
     override fun observeAll(): Flow<List<ExerciseEntity>> = MutableStateFlow(exercises.values.toList())
 

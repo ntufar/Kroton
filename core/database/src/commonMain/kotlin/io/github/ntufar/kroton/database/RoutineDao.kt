@@ -75,4 +75,16 @@ interface RoutineDao {
 
     @Query("SELECT * FROM routine_set WHERE routineExerciseId = :routineExerciseId ORDER BY sortOrder ASC")
     suspend fun getSetsForExercise(routineExerciseId: Long): List<RoutineSetEntity>
+
+    @Query("DELETE FROM routine_set")
+    suspend fun clearSets()
+
+    @Query("DELETE FROM routine_exercise")
+    suspend fun clearExercises()
+
+    @Query("DELETE FROM routine")
+    suspend fun clearRoutines()
+
+    @Query("DELETE FROM routine_folder")
+    suspend fun clearFolders()
 }

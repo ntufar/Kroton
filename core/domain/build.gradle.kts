@@ -20,7 +20,9 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.model)
             implementation(projects.core.database)
+            implementation(projects.core.export)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.serialization.json)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

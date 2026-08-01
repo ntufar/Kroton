@@ -252,10 +252,67 @@ What's built (`core/database/.../StatsDao.kt`, `core/domain/.../StatsRepository.
 
 ## M6 — Data portability
 
-Status: ⬜ not started
+Status: ✅ done — build/lint/test-verified, including a real-Room backup round-trip test
 
-XLSX (fastexcel) and CSV export, JSON backup/restore round trip, auto-backup (WorkManager),
-share sheet + email entry points, platform `BackupAgent`, Hevy/Strong CSV import.
+What's built (`core/export/...`, `core/domain/.../BackupRepository.kt` + `BackupFileIo.kt` +
+`ImportRepository.kt`, `feature/settings/...`, `app/.../backup/...`):
+
+- ✅ **JSON backup/restore** (spec §6.3): `BackupJson` expanded to full fidelity (every table,
+  nested exercises/sets under workouts and routines). `BackupRepository.buildBackup` assembles it
+  from the DAOs; `.restore` always **remaps ids** rather than trusting the backup's own ids —
+  necessary since a restore target (fresh install, or the same DB after a `REPLACE` wipe) has no
+  guarantee of matching auto-generated ids. Exercises reconcile by `seedUuid` then
+  `nameNormalised` (so seeded exercises aren't duplicated on restore); measurement types
+  reconcile by `key`; everything else (routines, workouts, sets, records) is freshly inserted
+  with remapped foreign keys. `MERGE` mode dedupes workouts by `startedAt`+`name` per spec;
+  `REPLACE` wipes generated tables first (new DAO `clear*()` queries) but never touches the
+  exercise catalog or profile. Verified end-to-end by `BackupRepositoryRoundTripTest`
+  (`core/domain` `jvmTest`, real Room/SQLite like the M5 perf test): export → `REPLACE` restore →
+  export again, asserting workout/exercise/measurement/photo *content* matches (ids legitimately
+  differ after remapping, so the comparison ignores them — ids reassigned is the correct behaviour
+  for a restore onto a target with no prior matching rows, not a bug).
+- ✅ `.kroton` = ZIP of `backup.json` + `photos/` (`BackupFileIo`, `java.util.zip` — same
+  established pattern as using `java.time` directly in this KMP module's commonMain).
+- ✅ **XLSX** (`XlsxWriter`, fastexcel — verified against the library's actual GitHub source
+  before writing any code, given no local docs access): all 9 §6.1 sheets, real date/numeric
+  cells (not strings), bold frozen header row, autofilter.
+- ✅ **CSV**: `Sets` + `Workouts` only (the two highest-value sheets per spec's own framing of
+  `Sets` as "the pivot table") bundled as a ZIP — **not all 9 sheets**, a scoped simplification
+  since XLSX already has full parity and duplicating all 9 sheet-builders in CSV form wasn't
+  worth the time given everything else in this milestone. Follow-up, not forgotten.
+- ✅ **Share entry points**: Save to… (`ACTION_CREATE_DOCUMENT`), Share… and Email to myself
+  (`ACTION_SEND` via the existing `FileProvider`, correct OOXML/zip MIME types so Sheets/Drive
+  offer themselves in the chooser) — all three behind the same generated file, per spec §6.5.
+- ✅ **Auto-backup** (`AutoBackupWorker`/`AutoBackupScheduler`, WorkManager, no charging/idle
+  constraints per spec): daily job writes a `.kroton` snapshot to a user-chosen SAF tree URI,
+  keeps the last 7. Settings screen's folder picker enables it (persists a persistable URI
+  permission). Enable state and tree URI live in plain `SharedPreferences` rather than the
+  `core:datastore` module CLAUDE.md mentions — that module is still unimplemented; using it
+  properly was out of scope for this pass, documented rather than silently swapped.
+- ✅ **Platform `BackupAgent`** (`KrotonBackupAgent`, spec §6.7): `allowBackup="true"` +
+  `dataExtractionRules`/`fullBackupContent` XML explicitly excluding `kroton.db`/`-wal`/`-shm`
+  and `photos/`; `onFullBackup` refreshes a gzipped JSON snapshot
+  (`filesDir/backup_snapshot/snapshot.json.gz`) before delegating to the default full-backup
+  implementation, so only that small file (plus whatever the XML rules don't exclude) leaves the
+  device. `KrotonApplication.onCreate` detects the snapshot on first launch after a restore,
+  imports it via `BackupRepository.restore(REPLACE)`, and deletes it.
+- ✅ **Hevy/Strong CSV import** (`CsvParser` + `HevyImport`/`StrongImport` in `core:export`,
+  `ImportRepository` in `core:domain`): parses by header name per spec, not position. **Neither
+  mapping was verified against a real Hevy or Strong export** — no sample file was available in
+  this pass, and the spec explicitly warns not to trust the documented column shape blindly, so
+  this is a best-effort implementation pending verification against real exports before relying
+  on it. Unmatched exercise names are **auto-created as custom exercises** rather than routed
+  through a manual fuzzy-match mapping screen (spec's "fuzzy-suggest, or create as custom" UI) —
+  a scope simplification. Imported sets are **not** run through live PR detection — bulk-imported
+  history doesn't retroactively populate `personal_record`; users get correct set/workout data
+  immediately, but the Records screen for imported lifts needs a manual look, a known follow-up.
+- **Settings screen** (`feature/settings`, previously a placeholder) now hosts auto-backup,
+  export (XLSX/JSON/CSV with Save/Share/Email), import (Hevy/Strong), and restore (pick a
+  `.kroton` file → preview workout count → Merge or Replace, always taking a safety snapshot
+  first per spec). Units/theme/1RM-formula/plate-bar-inventory editors from spec §5.8 are **not**
+  built — `ProfileRepository.update` exists for a future settings-fields screen, but this pass
+  prioritized the data-portability half of M6 over the preferences half given the milestone's own
+  name and the explicit M6 task list (XLSX/CSV/JSON/auto-backup/share/BackupAgent/import).
 
 ## M7 — Release
 

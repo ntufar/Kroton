@@ -22,10 +22,16 @@ androidxTestExtJunit = "1.2.1"
 espresso = "3.6.1"
 ktlintGradle = "12.1.2"
 detekt = "1.23.7"
+fastexcel = "0.20.2"
+workManager = "2.11.2"
+documentfile = "1.0.1"
 
 [libraries]
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+fastexcel = { module = "org.dhatim:fastexcel", version.ref = "fastexcel" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
